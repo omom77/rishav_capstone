@@ -1,10 +1,10 @@
 from ultralytics import YOLO
 import cv2
 import math
-from picamera2 import Picamera2  # New import for Pi Camera
+from picamera import Picamera  # New import for Pi Camera
 
 # Initialize Pi Camera
-picam2 = Picamera2()
+picam2 = Picamera()
 config = picam2.create_preview_configuration(main={"size": (640, 480)})
 picam2.configure(config)
 picam2.start()
