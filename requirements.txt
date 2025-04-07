@@ -1,2 +1,5 @@
+# Core requirements
 ultralytics==8.2.82
 ultralytics-thop==2.0.5
+opencv-python==4.9.0.80
+picamera2==0.3.13
