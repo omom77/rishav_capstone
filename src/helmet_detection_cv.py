@@ -1,83 +1,68 @@
 from ultralytics import YOLO
 import cv2
-import math 
+import math
+from picamera2 import Picamera2  # New import for Pi Camera
 
-width = 640 
-height = 480
+# Initialize Pi Camera
+picam2 = Picamera2()
+config = picam2.create_preview_configuration(main={"size": (640, 480)})
+picam2.configure(config)
+picam2.start()
 
-# start webcam
-cap = cv2.VideoCapture(0)
-cap.set(3, width)
-cap.set(4, height)
+# Model
+model = YOLO("../weights/hemletYoloV8_100epochs.pt")
+print(model.names)
 
-# model
-model = YOLO("..\weights\hemletYoloV8_100epochs.pt")\
-# model = YOLO(TRAIN_model)
-print(model.names) 
-
-# object classes
+# Object classes
 classNames = ["head", "helmet", "person"]
 
-
 while True:
-    success, img = cap.read()
-    results = model(img, stream=True)
+    try:
+        # Capture frame from Pi Camera
+        img = picam2.capture_array()
+        
+        # Convert from BGR to RGB (Pi Camera gives BGR by default)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        
+        # Verify image was captured
+        if img is None or img.size == 0:
+            print("Failed to capture image")
+            continue
+            
+        # Process with YOLO
+        results = model(img, stream=True)
 
-    # coordinates
-    for r in results:
-        boxes = r.boxes
+        for r in results:
+            boxes = r.boxes
+            for box in boxes:
+                # bounding box
+                x1, y1, x2, y2 = box.xyxy[0]
+                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
 
-        for box in boxes:
-            # bounding box
-            x1, y1, x2, y2 = box.xyxy[0]
-            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
+                # Draw rectangle
+                cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
 
-            x_mid = (x1 + x2)/2
-            y_mid = (y1 + y2)/2
+                # Confidence
+                confidence = math.ceil((box.conf[0]*100))/100
+                print("Confidence --->", confidence)
 
-            # put box in cam
-            cv2.rectangle(
-                img, 
-                (x1, y1), 
-                (x2, y2), 
-                (255, 0, 255), 
-                3
-                )
+                # Class name
+                cls = int(box.cls[0])
+                print("Class name -->", classNames[cls])
 
-            # Define midpoint of detected object
-            bb_center = [
-                (x1+x2)/2, 
-                (y1+y2)/2
-                ]
+                # Display text
+                cv2.putText(img, f"{classNames[cls]} {confidence:.2f}",
+                           (x1, max(y1-10, 20)),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
 
-            # confidence
-            confidence = math.ceil((box.conf[0]*100))/100
-            print("Confidence --->",confidence)
+        cv2.imshow('Pi Camera', img)
+        if cv2.waitKey(1) == ord('q'):
+            break
 
-            # class name
-            cls = int(box.cls[0])
-            print("Class name -->", classNames[cls])
-
-            # object details
-            org = [x1, y1]
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            fontScale = 1
-            color = (255, 0, 0)
-            thickness = 2
-
-            cv2.putText(
-                img, 
-                classNames[cls], 
-                org, 
-                font, 
-                fontScale, 
-                color, 
-                thickness
-                )
-
-    cv2.imshow('Webcam', img)
-    if cv2.waitKey(1) == ord('q'):
+    except Exception as e:
+        print(f"Error: {e}")
         break
 
-cap.release()
+# Cleanup
+picam2.stop()
 cv2.destroyAllWindows()
