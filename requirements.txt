@@ -2,4 +2,5 @@
 ultralytics==8.2.82
 ultralytics-thop==2.0.5
 opencv-python==4.9.0.80
-picamera==0.3.13
+picamera==1.13
+
