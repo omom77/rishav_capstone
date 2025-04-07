@@ -22,7 +22,7 @@ classNames = ["head", "helmet", "person"]
 
 def trigger_alert():
     GPIO.output(LED_PIN, GPIO.HIGH)
-    time.sleep(0.2)
+    time.sleep(0.1)
     GPIO.output(LED_PIN, GPIO.LOW)
 
 try:
@@ -31,6 +31,7 @@ try:
         if not success or img is None:
             print("Failed to grab frame")
             trigger_alert()
+            time.sleep(0.5)
             continue
 
         results = model(img, stream=True)
