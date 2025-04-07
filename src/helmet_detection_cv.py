@@ -1,13 +1,18 @@
 from ultralytics import YOLO
 import cv2
 import math
-from picamera import Picamera  # New import for Pi Camera
+from picamera import PiCamera
+from picamera.array import PiRGBArray
+import time
 
 # Initialize Pi Camera
-picam2 = Picamera()
-config = picam2.create_preview_configuration(main={"size": (640, 480)})
-picam2.configure(config)
-picam2.start()
+camera = PiCamera()
+camera.resolution = (640, 480)
+camera.framerate = 32
+rawCapture = PiRGBArray(camera, size=(640, 480))
+
+# Allow camera to warm up
+time.sleep(0.1)
 
 # Model
 model = YOLO("../weights/hemletYoloV8_100epochs.pt")
@@ -16,19 +21,10 @@ print(model.names)
 # Object classes
 classNames = ["head", "helmet", "person"]
 
-while True:
-    try:
-        # Capture frame from Pi Camera
-        img = picam2.capture_array()
+try:
+    for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+        img = frame.array
         
-        # Convert from BGR to RGB (Pi Camera gives BGR by default)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        
-        # Verify image was captured
-        if img is None or img.size == 0:
-            print("Failed to capture image")
-            continue
-            
         # Process with YOLO
         results = model(img, stream=True)
 
@@ -52,17 +48,21 @@ while True:
 
                 # Display text
                 cv2.putText(img, f"{classNames[cls]} {confidence:.2f}",
-                           (x1, max(y1-10, 20)),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+                          (x1, max(y1-10, 20)),
+                          cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
 
         cv2.imshow('Pi Camera', img)
+        
+        # Clear the stream for next frame
+        rawCapture.truncate(0)
+        
         if cv2.waitKey(1) == ord('q'):
             break
 
-    except Exception as e:
-        print(f"Error: {e}")
-        break
+except Exception as e:
+    print(f"Error: {e}")
 
-# Cleanup
-picam2.stop()
-cv2.destroyAllWindows()
+finally:
+    # Cleanup
+    camera.close()
+    cv2.destroyAllWindows()
