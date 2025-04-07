@@ -11,7 +11,7 @@ cap.set(3, width)
 cap.set(4, height)
 
 # model
-model = YOLO("..\weights\hemletYoloV8_100epochs.pt")\
+model = YOLO("..\weights\hemletYoloV8_100epochs.pt")
 # model = YOLO(TRAIN_model)
 print(model.names) 
 
